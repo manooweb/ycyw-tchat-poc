@@ -62,6 +62,9 @@ public class ChatService {
   }
 
   public List<MessageResponse> history(Long conversationId) {
+    if (!conversationRepository.existsById(conversationId)) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation introuvable");
+    }
     return messageRepository.findByConversationIdOrderById(conversationId).stream()
         .map(MessageResponse::from)
         .toList();
