@@ -18,6 +18,7 @@
 
   <properties>
     <java.version>25</java.version>
+    <springdoc.version>3.1.1</springdoc.version>
   </properties>
 
   <dependencies>
@@ -33,6 +34,13 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+
+    <!-- Documentation de l'API REST : OpenAPI (/v3/api-docs) et Swagger UI (/swagger-ui.html) -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>${springdoc.version}</version>
     </dependency>
 
     <!-- Données : JPA, migrations Flyway, pilote PostgreSQL -->

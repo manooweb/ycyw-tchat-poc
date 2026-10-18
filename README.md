@@ -96,6 +96,7 @@ cd back
 - Le back démarre lui-même la base : le module **Spring Boot Docker Compose** lance le conteneur PostgreSQL décrit dans `compose.yaml`, attend qu'il soit prêt et s'y connecte. À l'arrêt du back (Ctrl+C), le conteneur est arrêté ; les données sont conservées.
 - La base démarre vide la première fois. Ce sont les **migrations Flyway** qui la remplissent : Flyway est un outil qui exécute, au démarrage du back, les scripts SQL du dossier `back/src/main/resources/db/migration/`, dans l'ordre de leur numéro et une seule fois chacun.
 - Le back est prêt quand la console affiche `Started ChatPocApplication`.
+- La documentation de l'API REST est alors consultable sur <http://localhost:8080/swagger-ui.html> (voir [section 5.4](#54-la-documentation-de-lapi-openapi)).
 
 ## 5. Fonctionnement : le trajet d'un message
 
@@ -124,6 +125,15 @@ Exemple : un client envoie « Bonjour » à la destination `/app/conversations/3
 | STOMP, envoi | `/app/conversations/{id}/messages` | Envoyer un message |
 | STOMP, abonnement | `/topic/conversations/{id}` | Recevoir les messages d'une conversation |
 | STOMP, abonnement | `/topic/conversations` | L'agent reçoit les nouvelles conversations |
+
+### 5.4 La documentation de l'API (OpenAPI)
+
+**OpenAPI** est un format standard qui décrit une API REST : ses adresses, ce qu'elles reçoivent et ce qu'elles renvoient. La bibliothèque **springdoc-openapi** le génère automatiquement à partir des contrôleurs, et l'affiche dans **Swagger UI**, une page web où l'on peut essayer chaque adresse.
+
+- Swagger UI : <http://localhost:8080/swagger-ui.html> (bouton « Try it out » sur chaque adresse) ;
+- description brute, au format JSON : <http://localhost:8080/v3/api-docs>.
+
+Seules les adresses REST y figurent : OpenAPI ne décrit pas les échanges STOMP, détaillés dans le tableau ci-dessus. Dans l'application cible, la même bibliothèque documentera l'API destinée aux agences (épique E6 du cahier des charges). Dans la PoC, l'accès n'est pas protégé, comme le reste de l'API.
 
 ## 6. Structure des données
 

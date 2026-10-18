@@ -5,6 +5,8 @@ import com.ycyw.chat.dto.MessageResponse;
 import com.ycyw.chat.dto.NewConversationRequest;
 import com.ycyw.chat.dto.UserResponse;
 import com.ycyw.chat.service.ChatService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
  * API REST : tout ce qui se lit au chargement de l'écran, et l'ouverture d'une conversation. Les
  * messages, eux, s'envoient par WebSocket (voir ChatMessageController).
  */
+@Tag(name = "Tchat", description = "Utilisateurs, conversations et historique")
 @RestController
 @RequestMapping("/api")
 public class ChatRestController {
@@ -35,17 +38,20 @@ public class ChatRestController {
   }
 
   /** Les utilisateurs de démo, pour le choix « Qui êtes-vous ? ». */
+  @Operation(summary = "Lister les utilisateurs de démonstration")
   @GetMapping("/users")
   public List<UserResponse> users() {
     return chatService.listUsers();
   }
 
+  @Operation(summary = "Lister les conversations d'un utilisateur (toutes pour un agent)")
   @GetMapping("/conversations")
   public List<ConversationResponse> conversations(@RequestParam Long userId) {
     return chatService.listConversations(userId);
   }
 
   /** Ouvre une conversation et prévient en direct les agents abonnés à /topic/conversations. */
+  @Operation(summary = "Ouvrir une conversation (client uniquement)")
   @PostMapping("/conversations")
   @ResponseStatus(HttpStatus.CREATED)
   public ConversationResponse open(@Valid @RequestBody NewConversationRequest request) {
@@ -55,6 +61,7 @@ public class ChatRestController {
   }
 
   /** Historique complet d'une conversation, chargé quand on l'ouvre. */
+  @Operation(summary = "Lire l'historique d'une conversation")
   @GetMapping("/conversations/{id}/messages")
   public List<MessageResponse> history(@PathVariable Long id) {
     return chatService.history(id);
