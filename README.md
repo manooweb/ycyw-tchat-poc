@@ -15,7 +15,8 @@ Une preuve de concept est un petit programme qui vérifie qu'un choix technique 
 2. [Prérequis](#2-prérequis)
 3. [Installation](#3-installation)
 4. [Lancement](#4-lancement)
-5. [Dépannage](#5-dépannage)
+5. [Structure des données](#5-structure-des-données)
+6. [Dépannage](#6-dépannage)
 
 ## 1. Ce que la PoC démontre, et ce qu'elle ne fait pas
 
@@ -92,9 +93,42 @@ cd back
 - Sous Windows, remplace `./mvnw` par `mvnw.cmd`.
 - Le premier lancement télécharge les dépendances : compte quelques minutes.
 - Le back démarre lui-même la base : le module **Spring Boot Docker Compose** lance le conteneur PostgreSQL décrit dans `compose.yaml`, attend qu'il soit prêt et s'y connecte. À l'arrêt du back (Ctrl+C), le conteneur est arrêté ; les données sont conservées.
+- La base démarre vide la première fois. Ce sont les **migrations Flyway** qui la remplissent : Flyway est un outil qui exécute, au démarrage du back, les scripts SQL du dossier `back/src/main/resources/db/migration/`, dans l'ordre de leur numéro et une seule fois chacun.
 - Le back est prêt quand la console affiche `Started ChatPocApplication`.
 
-## 5. Dépannage
+## 5. Structure des données
+
+Trois tables, créées par la migration `V1__create_tables.sql`. Les deux utilisateurs de démonstration sont ajoutés par `V2__insert_demo_users.sql`.
+
+| Table | Colonne | Type | Rôle |
+| --- | --- | --- | --- |
+| `app_user` | `id` | nombre, clé primaire | Identifiant unique |
+| `app_user` | `display_name` | texte (100) | Nom affiché |
+| `app_user` | `role` | texte, `CLIENT` ou `AGENT` | Rôle de l'utilisateur |
+| `conversation` | `id` | nombre, clé primaire | Identifiant unique |
+| `conversation` | `client_id` | clé étrangère vers `app_user` | Client qui a ouvert la conversation |
+| `conversation` | `created_at` | date et heure | Date d'ouverture |
+| `message` | `id` | nombre, clé primaire | Identifiant unique, croissant : il donne l'ordre des messages |
+| `message` | `conversation_id` | clé étrangère vers `conversation` | Conversation du message |
+| `message` | `author_id` | clé étrangère vers `app_user` | Auteur, client ou agent |
+| `message` | `content` | texte (2 000), jamais vide | Contenu du message |
+| `message` | `sent_at` | date et heure | Date d'envoi |
+
+Quelques notions :
+
+- une **clé étrangère** relie une ligne à une ligne d'une autre table : la base refuse un message dont l'auteur n'existe pas ;
+- le schéma respecte la **troisième forme normale (3NF)** : chaque information n'est stockée qu'à un seul endroit. Par exemple, le nom de l'auteur n'est pas recopié dans chaque message, seul son identifiant l'est ;
+- la base ne contient **aucune donnée sensible** : ni e-mail, ni mot de passe.
+
+Pour regarder le contenu de la base, pendant que le back tourne :
+
+```bash
+docker compose exec postgres psql -U ycyw -d ycyw_chat -c "SELECT * FROM message;"
+```
+
+Remplace `ycyw` et `ycyw_chat` si tu as changé `POSTGRES_USER` ou `POSTGRES_DB` dans `.env`.
+
+## 6. Dépannage
 
 | Symptôme | Cause probable | Solution |
 | --- | --- | --- |
@@ -102,4 +136,5 @@ cd back
 | Le back s'arrête : *required variable POSTGRES_DB is missing* | Pas de fichier `.env` | `cp .env.example .env` ([section 3.2](#32-créer-le-fichier-env)) |
 | Le back s'arrête : *port is already allocated* | Un autre PostgreSQL utilise déjà le port 5432 | Arrête-le, ou mets `POSTGRES_PORT=5433` dans `.env` |
 | Le back s'arrête : *password authentication failed* | Le mot de passe de `.env` a changé après la création de la base | Recrée la base, ce qui efface ses données : `docker compose down -v` à la racine du dépôt, puis relance le back |
+| Le back s'arrête sur une erreur Flyway (*checksum mismatch*, *more than one migration*) | Base ou dossier `target/` créés par une ancienne version du code | Recrée la base comme ci-dessus, puis relance avec `./mvnw clean spring-boot:run` |
 | `./mvnw` affiche *release version 25 not supported* | Maven utilise un JDK plus ancien | `java -version` doit afficher 25 |
