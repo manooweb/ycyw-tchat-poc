@@ -1,4 +1,4 @@
-# YCYW — PoC tchat
+# YCYW - PoC tchat
 
 Preuve de concept (PoC) du **tchat entre un client et un agent du service client** de Your Car Your Way.
 
@@ -18,7 +18,8 @@ Une preuve de concept est un petit programme qui vérifie qu'un choix technique 
 5. [Démo à deux navigateurs](#5-démo-à-deux-navigateurs)
 6. [Fonctionnement : le trajet d'un message](#6-fonctionnement--le-trajet-dun-message)
 7. [Structure des données](#7-structure-des-données)
-8. [Dépannage](#8-dépannage)
+8. [Arborescence commentée](#8-arborescence-commentée)
+9. [Dépannage](#9-dépannage)
 
 ## 1. Ce que la PoC démontre, et ce qu'elle ne fait pas
 
@@ -62,7 +63,7 @@ Installe ces outils. La commande de la dernière colonne doit afficher la bonne 
 | JDK (kit de développement Java, Temurin conseillé) | 25 | `java -version` |
 | Node.js | 24 LTS conseillé, 22.22 minimum | `node -v` |
 | Docker et Docker Compose | Docker 24 ou plus | `docker compose version` |
-| Un éditeur de code | IntelliJ IDEA ou VS Code | — |
+| Un éditeur de code | IntelliJ IDEA ou VS Code | - |
 
 Tu n'as pas besoin d'installer Maven ni PostgreSQL :
 
@@ -118,7 +119,7 @@ cd back
 - Le back démarre lui-même la base : le module **Spring Boot Docker Compose** lance le conteneur PostgreSQL décrit dans `compose.yaml`, attend qu'il soit prêt et s'y connecte. À l'arrêt du back (Ctrl+C), le conteneur est arrêté ; les données sont conservées.
 - La base démarre vide la première fois. Ce sont les **migrations Flyway** qui la remplissent : Flyway est un outil qui exécute, au démarrage du back, les scripts SQL du dossier `back/src/main/resources/db/migration/`, dans l'ordre de leur numéro et une seule fois chacun.
 - Le back est prêt quand la console affiche `Started ChatPocApplication`.
-- La documentation de l'API REST est alors consultable sur <http://localhost:8080/swagger-ui.html> (voir [section 6.4](#64-la-documentation-de-lapi-openapi)).
+- La documentation de l'API REST est alors consultable sur <http://localhost:8080/swagger-ui.html> (voir [section 6.5](#65-la-documentation-de-lapi-openapi)).
 
 ### 4.2 Le front (port 4200)
 
@@ -137,7 +138,7 @@ Place deux fenêtres côte à côte, chacune sur une moitié de l'écran, par ex
 
 | Étape | Fenêtre de gauche (client) | Fenêtre de droite (agent) |
 | --- | --- | --- |
-| 1 | Ouvre <http://localhost:4200> et choisis « Camille Martin — client » | Ouvre <http://localhost:4200> et choisis « Alex Durand — agent du service client » |
+| 1 | Ouvre <http://localhost:4200> et choisis « Camille Martin - client » | Ouvre <http://localhost:4200> et choisis « Alex Durand - agent du service client » |
 | 2 | Clique sur « Nouvelle conversation » : un message confirme qu'un conseiller va répondre | La conversation apparaît aussitôt dans « Conversations des clients », et un message l'annonce, sans recharger la page |
 | 3 | Écris un message et appuie sur Entrée (essaie aussi avec un champ vide : un message d'erreur s'affiche sous le champ) | Clique sur la conversation : le message du client s'affiche |
 | 4 | La réponse de l'agent s'affiche aussitôt | Réponds : le message apparaît des deux côtés |
@@ -153,7 +154,40 @@ Tout l'écran s'utilise au clavier : la touche Tab passe d'un élément à l'aut
 - **WebSocket** : une connexion qui reste ouverte entre le navigateur et le back. Le back peut ainsi envoyer un message au navigateur sans que celui-ci le demande. On l'utilise pour les messages en direct.
 - **STOMP** est un protocole simple qui s'ajoute à la WebSocket. Il permet de s'**abonner** à une adresse (appelée *destination*, par exemple `/topic/conversations/3`) et de recevoir tout ce qui y est publié. Le composant qui distribue les messages aux abonnés s'appelle le **broker** ; ici, il est intégré au back.
 
-### 6.2 Le trajet, étape par étape
+### 6.2 Les composants et leurs liens
+
+```mermaid
+flowchart LR
+  accTitle: Composants de la PoC tchat
+  accDescr: Le front Angular appelle le back Spring Boot en REST pour les lectures et par WebSocket STOMP pour les messages en direct. Les deux contrôleurs passent par ChatService, qui lit et écrit dans PostgreSQL par les repositories JPA. Flyway crée le schéma au démarrage. PostgreSQL tourne dans un conteneur Docker démarré par le back.
+
+  front["Front Angular<br/>(navigateur)"]
+
+  subgraph back["Back Spring Boot (port 8080)"]
+    rest["ChatRestController<br/>REST /api"]
+    stomp["ChatMessageController<br/>STOMP /app"]
+    broker["Broker STOMP<br/>en mémoire /topic"]
+    service["ChatService"]
+    repo["Repositories JPA"]
+    flyway["Flyway"]
+  end
+
+  db[("PostgreSQL<br/>conteneur Docker")]
+
+  front -- "REST : lectures, ouverture" --> rest
+  front -- "WebSocket STOMP : envoi" --> stomp
+  broker -- "WebSocket STOMP : diffusion" --> front
+  rest --> service
+  stomp --> service
+  stomp -- "message enregistré" --> broker
+  service --> repo
+  repo -- "SQL" --> db
+  flyway -- "migrations V1, V2" --> db
+```
+
+En mots : le front parle au back de deux façons, REST pour lire et WebSocket STOMP pour le direct. Les deux contrôleurs passent par le même service, qui lit et écrit en base par les repositories. Le broker renvoie chaque message enregistré à tous les navigateurs abonnés. Pendant le développement, le proxy d'Angular (port 4200) transmet ces appels au back.
+
+### 6.3 Le trajet, étape par étape
 
 Exemple : Camille envoie « Bonjour » dans la conversation n° 3.
 
@@ -166,7 +200,7 @@ Exemple : Camille envoie « Bonjour » dans la conversation n° 3.
 5. La méthode `send` renvoie le message enregistré. L'annotation `@SendTo("/topic/conversations/{id}")` le confie au broker, qui le transmet à tous les abonnés de la conversation n° 3.
 6. Le front de Camille et celui de l'agent reçoivent le message et l'ajoutent au signal `live`. Le signal calculé `messages` réunit l'historique et `live`, sans doublon : l'écran se met à jour, et le lecteur d'écran annonce le message grâce au rôle `log` de la zone des messages.
 
-### 6.3 Les adresses utilisées
+### 6.4 Les adresses utilisées
 
 | Type | Adresse | Rôle |
 | --- | --- | --- |
@@ -178,7 +212,7 @@ Exemple : Camille envoie « Bonjour » dans la conversation n° 3.
 | STOMP, abonnement | `/topic/conversations/{id}` | Recevoir les messages d'une conversation |
 | STOMP, abonnement | `/topic/conversations` | L'agent reçoit les nouvelles conversations |
 
-### 6.4 La documentation de l'API (OpenAPI)
+### 6.5 La documentation de l'API (OpenAPI)
 
 **OpenAPI** est un format standard qui décrit une API REST : ses adresses, ce qu'elles reçoivent et ce qu'elles renvoient. La bibliothèque **springdoc-openapi** le génère automatiquement à partir des contrôleurs, et l'affiche dans **Swagger UI**, une page web où l'on peut essayer chaque adresse.
 
@@ -187,7 +221,7 @@ Exemple : Camille envoie « Bonjour » dans la conversation n° 3.
 
 Seules les adresses REST y figurent : OpenAPI ne décrit pas les échanges STOMP, détaillés dans le tableau ci-dessus. Dans l'application cible, la même bibliothèque documentera l'API destinée aux agences (épique E6 du cahier des charges). Dans la PoC, l'accès n'est pas protégé, comme le reste de l'API.
 
-### 6.5 Accessibilité de l'écran
+### 6.6 Accessibilité de l'écran
 
 Elle suit le RGAA (Référentiel général d'amélioration de l'accessibilité) :
 
@@ -229,7 +263,43 @@ docker compose exec postgres psql -U ycyw -d ycyw_chat -c "SELECT * FROM message
 
 Remplace `ycyw` et `ycyw_chat` si tu as changé `POSTGRES_USER` ou `POSTGRES_DB` dans `.env`.
 
-## 8. Dépannage
+## 8. Arborescence commentée
+
+```text
+ycyw-chat-poc/
+├── compose.yaml                 Décrit le conteneur PostgreSQL, démarré par le back
+├── .env.example                 Modèle du fichier .env (mot de passe de la base)
+├── back/                        Le serveur Spring Boot
+│   ├── pom.xml                  Dépendances Maven (dont springdoc-openapi)
+│   └── src/main/
+│       ├── java/com/ycyw/chat/
+│       │   ├── ChatPocApplication.java   Point de démarrage du back
+│       │   ├── config/
+│       │   │   └── WebSocketConfig.java  Adresse /ws, préfixes /app et /topic, broker
+│       │   ├── entity/                   Une classe Java par table (AppUser, Conversation, Message) et l'énumération Role
+│       │   ├── repository/               Lecture et écriture en base, une interface par table
+│       │   ├── dto/                      Données échangées avec le front (requêtes et réponses)
+│       │   ├── service/
+│       │   │   └── ChatService.java      Toute la logique du tchat
+│       │   └── controller/
+│       │       ├── ChatRestController.java     Adresses REST /api/...
+│       │       └── ChatMessageController.java  Messages en direct (STOMP)
+│       └── resources/
+│           ├── application.yaml          Configuration (démarrage de la base avec compose.yaml)
+│           └── db/migration/             Scripts Flyway V1 (tables) et V2 (utilisateurs de démo)
+└── front/                       L'interface Angular
+    ├── proxy.conf.json          Transmet /api et /ws au back
+    └── src/app/
+        ├── app.ts               L'unique écran : son état (signals) et ses actions
+        ├── app.html             L'unique écran : son contenu
+        ├── app.css              L'unique écran : sa mise en page
+        ├── chat.service.ts      Lectures REST (httpResource), ouverture d'une conversation, connexion STOMP
+        └── models.ts            Types des données reçues du back
+```
+
+Le back est découpé en couches : le **controller** reçoit les demandes du front, le **service** applique la logique, le **repository** lit et écrit en base, l'**entity** représente une ligne de table. Chaque couche n'appelle que la suivante.
+
+## 9. Dépannage
 
 | Symptôme | Cause probable | Solution |
 | --- | --- | --- |
