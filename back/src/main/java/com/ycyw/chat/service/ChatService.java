@@ -5,6 +5,7 @@ import com.ycyw.chat.dto.MessageResponse;
 import com.ycyw.chat.dto.UserResponse;
 import com.ycyw.chat.entity.AppUser;
 import com.ycyw.chat.entity.Conversation;
+import com.ycyw.chat.entity.Message;
 import com.ycyw.chat.entity.Role;
 import com.ycyw.chat.repository.AppUserRepository;
 import com.ycyw.chat.repository.ConversationRepository;
@@ -16,8 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Toute la logique du tchat : lire les utilisateurs, ouvrir une conversation, lire l'historique.
- * Les contrôleurs n'accèdent jamais directement aux repositories.
+ * Toute la logique du tchat : lire les utilisateurs, ouvrir une conversation, enregistrer un
+ * message, lire l'historique. Les contrôleurs n'accèdent jamais directement aux repositories.
  */
 @Service
 public class ChatService {
@@ -64,6 +65,18 @@ public class ChatService {
     return messageRepository.findByConversationIdOrderById(conversationId).stream()
         .map(MessageResponse::from)
         .toList();
+  }
+
+  @Transactional
+  public MessageResponse saveMessage(Long conversationId, Long authorId, String content) {
+    Conversation conversation =
+        conversationRepository
+            .findById(conversationId)
+            .orElseThrow(
+                () ->
+                    new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation introuvable"));
+    Message message = new Message(conversation, findUser(authorId), content.strip());
+    return MessageResponse.from(messageRepository.save(message));
   }
 
   private AppUser findUser(Long userId) {

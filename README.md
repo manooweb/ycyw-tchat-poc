@@ -7,7 +7,7 @@ Une preuve de concept est un petit programme qui vérifie qu'un choix technique 
 - **back** (le serveur) : Spring Boot 4.1 en Java 25 ;
 - **front** (l'interface dans le navigateur) : Angular 22 ;
 - **base de données** : PostgreSQL 18 ;
-- **échanges en direct** : WebSocket avec le protocole STOMP.
+- **échanges en direct** : WebSocket avec le protocole STOMP (expliqués en [section 5](#5-fonctionnement--le-trajet-dun-message)).
 
 ## Sommaire
 
@@ -15,7 +15,7 @@ Une preuve de concept est un petit programme qui vérifie qu'un choix technique 
 2. [Prérequis](#2-prérequis)
 3. [Installation](#3-installation)
 4. [Lancement](#4-lancement)
-5. [Fonctionnement](#5-fonctionnement)
+5. [Fonctionnement : le trajet d'un message](#5-fonctionnement--le-trajet-dun-message)
 6. [Structure des données](#6-structure-des-données)
 7. [Dépannage](#7-dépannage)
 
@@ -97,13 +97,23 @@ cd back
 - La base démarre vide la première fois. Ce sont les **migrations Flyway** qui la remplissent : Flyway est un outil qui exécute, au démarrage du back, les scripts SQL du dossier `back/src/main/resources/db/migration/`, dans l'ordre de leur numéro et une seule fois chacun.
 - Le back est prêt quand la console affiche `Started ChatPocApplication`.
 
-## 5. Fonctionnement
+## 5. Fonctionnement : le trajet d'un message
 
-### 5.1 Communiquer avec le back en REST
+### 5.1 Deux façons de communiquer avec le back
 
 - **REST** : le front envoie une requête HTTP et reçoit une réponse, comme une page web classique. On l'utilise pour ce qui se lit une fois : la liste des utilisateurs, des conversations, et l'historique.
+- **WebSocket** : une connexion qui reste ouverte entre le navigateur et le back. Le back peut ainsi envoyer un message au navigateur sans que celui-ci le demande. On l'utilise pour les messages en direct.
+- **STOMP** est un protocole simple qui s'ajoute à la WebSocket. Il permet de s'**abonner** à une adresse (appelée *destination*, par exemple `/topic/conversations/3`) et de recevoir tout ce qui y est publié. Le composant qui distribue les messages aux abonnés s'appelle le **broker** ; ici, il est intégré au back.
 
-### 5.2 Les adresses utilisées
+### 5.2 Le trajet, étape par étape
+
+Exemple : un client envoie « Bonjour » à la destination `/app/conversations/3/messages`.
+
+1. Dans le back, la méthode `send` de `ChatMessageController` reçoit le message. Spring vérifie d'abord que le contenu n'est pas vide et ne dépasse pas 2 000 caractères.
+2. `ChatService.saveMessage` enregistre le message dans la table `message`.
+3. La méthode `send` renvoie le message enregistré. L'annotation `@SendTo("/topic/conversations/{id}")` le confie au broker, qui le transmet à tous les abonnés de la conversation n° 3.
+
+### 5.3 Les adresses utilisées
 
 | Type | Adresse | Rôle |
 | --- | --- | --- |
@@ -111,6 +121,9 @@ cd back
 | REST | `GET /api/conversations?userId=1` | Conversations d'un client, ou toutes pour un agent |
 | REST | `POST /api/conversations` | Un client ouvre une conversation |
 | REST | `GET /api/conversations/{id}/messages` | Historique d'une conversation |
+| STOMP, envoi | `/app/conversations/{id}/messages` | Envoyer un message |
+| STOMP, abonnement | `/topic/conversations/{id}` | Recevoir les messages d'une conversation |
+| STOMP, abonnement | `/topic/conversations` | L'agent reçoit les nouvelles conversations |
 
 ## 6. Structure des données
 

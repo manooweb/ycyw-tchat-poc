@@ -8,6 +8,7 @@ import com.ycyw.chat.service.ChatService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,15 +18,20 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/** API REST : tout ce qui se lit au chargement de l'écran, et l'ouverture d'une conversation. */
+/**
+ * API REST : tout ce qui se lit au chargement de l'écran, et l'ouverture d'une conversation. Les
+ * messages, eux, s'envoient par WebSocket (voir ChatMessageController).
+ */
 @RestController
 @RequestMapping("/api")
 public class ChatRestController {
 
   private final ChatService chatService;
+  private final SimpMessagingTemplate messagingTemplate;
 
-  public ChatRestController(ChatService chatService) {
+  public ChatRestController(ChatService chatService, SimpMessagingTemplate messagingTemplate) {
     this.chatService = chatService;
+    this.messagingTemplate = messagingTemplate;
   }
 
   /** Les utilisateurs de démo, pour le choix « Qui êtes-vous ? ». */
@@ -39,11 +45,13 @@ public class ChatRestController {
     return chatService.listConversations(userId);
   }
 
-  /** Ouvre une conversation pour un client. */
+  /** Ouvre une conversation et prévient en direct les agents abonnés à /topic/conversations. */
   @PostMapping("/conversations")
   @ResponseStatus(HttpStatus.CREATED)
   public ConversationResponse open(@Valid @RequestBody NewConversationRequest request) {
-    return chatService.openConversation(request.clientId());
+    ConversationResponse conversation = chatService.openConversation(request.clientId());
+    messagingTemplate.convertAndSend("/topic/conversations", conversation);
+    return conversation;
   }
 
   /** Historique complet d'une conversation, chargé quand on l'ouvre. */
