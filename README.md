@@ -49,6 +49,7 @@ Installe ces outils. La commande de la dernière colonne doit afficher la bonne 
 | --- | --- | --- |
 | Git | 2 ou plus | `git --version` |
 | JDK (kit de développement Java, Temurin conseillé) | 25 | `java -version` |
+| Node.js | 24 LTS conseillé, 22.22 minimum | `node -v` |
 | Docker et Docker Compose | Docker 24 ou plus | `docker compose version` |
 | Un éditeur de code | IntelliJ IDEA ou VS Code | — |
 
@@ -78,13 +79,23 @@ cp .env.example .env
 
 Ouvre `.env` et remplace `change-me` par un mot de passe de ton choix.
 
+### 3.3 Installer les dépendances du front
+
+```bash
+cd front
+npm ci
+cd ..
+```
+
+`npm ci` installe exactement les versions listées dans `front/package-lock.json`.
+
 ## 4. Lancement
 
-Docker doit être démarré.
+Il faut deux terminaux : un pour le back, un pour le front. Docker doit être démarré.
 
 ### 4.1 Le back et la base de données (port 8080)
 
-Dans un terminal :
+Dans un premier terminal :
 
 ```bash
 cd back
@@ -97,6 +108,17 @@ cd back
 - La base démarre vide la première fois. Ce sont les **migrations Flyway** qui la remplissent : Flyway est un outil qui exécute, au démarrage du back, les scripts SQL du dossier `back/src/main/resources/db/migration/`, dans l'ordre de leur numéro et une seule fois chacun.
 - Le back est prêt quand la console affiche `Started ChatPocApplication`.
 - La documentation de l'API REST est alors consultable sur <http://localhost:8080/swagger-ui.html> (voir [section 5.4](#54-la-documentation-de-lapi-openapi)).
+
+### 4.2 Le front (port 4200)
+
+Dans un second terminal :
+
+```bash
+cd front
+npm start
+```
+
+Ouvre <http://localhost:4200>. Le fichier `front/proxy.conf.json` transmet au back les appels qui commencent par `/api` et `/ws` : le navigateur ne parle qu'à l'adresse `localhost:4200`.
 
 ## 5. Fonctionnement : le trajet d'un message
 
@@ -177,3 +199,4 @@ Remplace `ycyw` et `ycyw_chat` si tu as changé `POSTGRES_USER` ou `POSTGRES_DB`
 | Le back s'arrête : *password authentication failed* | Le mot de passe de `.env` a changé après la création de la base | Recrée la base, ce qui efface ses données : `docker compose down -v` à la racine du dépôt, puis relance le back |
 | Le back s'arrête sur une erreur Flyway (*checksum mismatch*, *more than one migration*) | Base ou dossier `target/` créés par une ancienne version du code | Recrée la base comme ci-dessus, puis relance avec `./mvnw clean spring-boot:run` |
 | `./mvnw` affiche *release version 25 not supported* | Maven utilise un JDK plus ancien | `java -version` doit afficher 25 |
+| `npm ci` affiche *install scripts blocked* | npm bloque par défaut certains scripts d'installation | Sans conséquence : `npm start` fonctionne |
