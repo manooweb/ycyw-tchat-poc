@@ -12,6 +12,8 @@ Une preuve de concept est un petit programme qui vérifie qu'un choix technique 
 ## Sommaire
 
 1. [Ce que la PoC démontre, et ce qu'elle ne fait pas](#1-ce-que-la-poc-démontre-et-ce-quelle-ne-fait-pas)
+2. [Prérequis](#2-prérequis)
+3. [Installation](#3-installation)
 
 ## 1. Ce que la PoC démontre, et ce qu'elle ne fait pas
 
@@ -34,3 +36,38 @@ Une PoC doit rester limitée à ce qu'elle veut prouver. Ces sujets sont traité
 | Plusieurs serveurs en parallèle | Un seul back, qui distribue lui-même les messages | Proposition d'architecture : broker de messages externe |
 | Clôture d'une conversation, affectation à un agent | Toute conversation reste ouverte, tous les agents peuvent répondre | Évolutions du tchat |
 | Tests automatisés | La vérification se fait par une démo à deux navigateurs, décrite dans ce README | Proposition d'architecture : stratégie de test |
+
+## 2. Prérequis
+
+Installe ces outils. La commande de la dernière colonne doit afficher la bonne version.
+
+| Outil | Version | Vérifier avec |
+| --- | --- | --- |
+| Git | 2 ou plus | `git --version` |
+| Docker et Docker Compose | Docker 24 ou plus | `docker compose version` |
+| Un éditeur de code | IntelliJ IDEA ou VS Code | — |
+
+Tu n'as pas besoin d'installer PostgreSQL :
+
+- PostgreSQL tourne dans un conteneur Docker, une sorte de mini-machine isolée.
+
+## 3. Installation
+
+### 3.1 Récupérer le code
+
+```bash
+git clone <url-du-dépôt> ycyw-chat-poc
+cd ycyw-chat-poc
+```
+
+Toutes les commandes partent de ce dossier, sauf indication contraire.
+
+### 3.2 Créer le fichier `.env`
+
+Le fichier `.env` contient le mot de passe de la base locale. Il n'est jamais enregistré dans Git : seul son modèle `.env.example` l'est.
+
+```bash
+cp .env.example .env
+```
+
+Ouvre `.env` et remplace `change-me` par un mot de passe de ton choix.

@@ -1,0 +1,24 @@
+# Base PostgreSQL de développement de la PoC, démarrée automatiquement par le back (Spring Boot).
+# Les identifiants viennent du fichier .env (copie de .env.example), jamais versionné.
+name: ycyw-chat-poc
+
+services:
+  postgres:
+    image: postgres:18.6
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Copier .env.example en .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Copier .env.example en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copier .env.example en .env}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Depuis PostgreSQL 18, l'image attend le volume sur /var/lib/postgresql.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:
