@@ -1,6 +1,6 @@
 import { HttpClient, httpResource } from '@angular/common/http';
 import { DestroyRef, Injectable, Signal, inject, signal } from '@angular/core';
-import { Client, StompSubscription } from '@stomp/stompjs';
+import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import { Observable } from 'rxjs';
 import { ChatMessage, Conversation, User } from './models';
 
@@ -19,7 +19,7 @@ export class ChatService {
   readonly connected = signal(false);
 
   /** Abonnements en cours, refaits automatiquement après une reconnexion. */
-  private readonly handlers = new Map<string, (body: unknown) => void>();
+  private readonly handlers = new Map<string, (frame: IMessage) => void>();
   private readonly subscriptions = new Map<string, StompSubscription>();
 
   private readonly stomp = new Client({
@@ -72,7 +72,7 @@ export class ChatService {
 
   // --- REST : action ---
 
-  /** Une seule réponse : HttpClient termine l'Observable ensuite, rien à désabonner. */
+  /** Une seule réponse, puis HttpClient termine l'Observable. */
   openConversation(clientId: number): Observable<Conversation> {
     return this.http.post<Conversation>('/api/conversations', { clientId });
   }
@@ -84,10 +84,11 @@ export class ChatService {
    * Le composant la passe à `onCleanup` dans un `effect` : le désabonnement est automatique.
    */
   subscribe<T>(destination: string, handler: (body: T) => void): () => void {
-    const untyped = handler as (body: unknown) => void;
-    this.handlers.set(destination, untyped);
+    // Chaque trame STOMP contient du JSON : on le convertit dans le type attendu par l'appelant.
+    const onFrame = (frame: IMessage) => handler(JSON.parse(frame.body) as T);
+    this.handlers.set(destination, onFrame);
     if (this.stomp.connected) {
-      this.subscribeNow(destination, untyped);
+      this.subscribeNow(destination, onFrame);
     }
     return () => {
       this.handlers.delete(destination);
@@ -103,11 +104,8 @@ export class ChatService {
     });
   }
 
-  private subscribeNow(destination: string, handler: (body: unknown) => void): void {
+  private subscribeNow(destination: string, onFrame: (frame: IMessage) => void): void {
     this.subscriptions.get(destination)?.unsubscribe();
-    this.subscriptions.set(
-      destination,
-      this.stomp.subscribe(destination, (frame) => handler(JSON.parse(frame.body))),
-    );
+    this.subscriptions.set(destination, this.stomp.subscribe(destination, onFrame));
   }
 }

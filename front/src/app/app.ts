@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import {
   Component,
+  DestroyRef,
   ElementRef,
   Injector,
   afterNextRender,
@@ -11,6 +12,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormField, form, maxLength, required, submit } from '@angular/forms/signals';
 import { ChatService } from './chat.service';
 import { ChatMessage, Conversation, User } from './models';
@@ -32,6 +34,7 @@ import { ChatMessage, Conversation, User } from './models';
 export class App {
   protected readonly chat = inject(ChatService);
   private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
 
   // --- État ---
 
@@ -125,13 +128,17 @@ export class App {
   protected openConversation(): void {
     const user = this.user();
     if (user) {
-      this.chat.openConversation(user.id).subscribe((conversation) => {
-        this.conversations.value.update((list) => [conversation, ...list]);
-        this.select(conversation);
-        this.notice.set(
-          `Conversation n° ${conversation.id} ouverte. Un conseiller va vous répondre.`,
-        );
-      });
+      // takeUntilDestroyed : l'abonnement s'arrête si le composant est détruit avant la réponse.
+      this.chat
+        .openConversation(user.id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((conversation) => {
+          this.conversations.value.update((list) => [conversation, ...list]);
+          this.select(conversation);
+          this.notice.set(
+            `Conversation n° ${conversation.id} ouverte. Un conseiller va vous répondre.`,
+          );
+        });
     }
   }
 
