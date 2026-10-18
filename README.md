@@ -219,6 +219,8 @@ Exemple : Camille envoie « Bonjour » dans la conversation n° 3.
 - Swagger UI : <http://localhost:8080/swagger-ui.html> (bouton « Try it out » sur chaque adresse) ;
 - description brute, au format JSON : <http://localhost:8080/v3/api-docs>.
 
+Pour chaque adresse, Swagger UI indique ses paramètres, les codes de retour possibles (par exemple 404 si la conversation n'existe pas) et un exemple de chaque champ.
+
 Seules les adresses REST y figurent : OpenAPI ne décrit pas les échanges STOMP, détaillés dans le tableau ci-dessus. Dans l'application cible, la même bibliothèque documentera l'API destinée aux agences (épique E6 du cahier des charges). Dans la PoC, l'accès n'est pas protégé, comme le reste de l'API.
 
 ### 6.6 Accessibilité de l'écran
