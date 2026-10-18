@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: ycyw-chat-poc
+  docker:
+    compose:
+      # Au démarrage, Spring Boot lance le conteneur PostgreSQL décrit dans compose.yaml
+      # (à la racine du dépôt) et s'y connecte : pas d'URL ni de mot de passe à recopier ici.
+      # Docker Compose lit les identifiants dans le fichier .env placé à côté de compose.yaml.
+      file: ../compose.yaml
+  jpa:
+    # Le schéma appartient à Flyway : Hibernate vérifie seulement qu'il correspond aux entités.
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+server:
+  port: 8080

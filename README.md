@@ -14,6 +14,8 @@ Une preuve de concept est un petit programme qui vérifie qu'un choix technique 
 1. [Ce que la PoC démontre, et ce qu'elle ne fait pas](#1-ce-que-la-poc-démontre-et-ce-quelle-ne-fait-pas)
 2. [Prérequis](#2-prérequis)
 3. [Installation](#3-installation)
+4. [Lancement](#4-lancement)
+5. [Dépannage](#5-dépannage)
 
 ## 1. Ce que la PoC démontre, et ce qu'elle ne fait pas
 
@@ -44,11 +46,13 @@ Installe ces outils. La commande de la dernière colonne doit afficher la bonne 
 | Outil | Version | Vérifier avec |
 | --- | --- | --- |
 | Git | 2 ou plus | `git --version` |
+| JDK (kit de développement Java, Temurin conseillé) | 25 | `java -version` |
 | Docker et Docker Compose | Docker 24 ou plus | `docker compose version` |
 | Un éditeur de code | IntelliJ IDEA ou VS Code | — |
 
-Tu n'as pas besoin d'installer PostgreSQL :
+Tu n'as pas besoin d'installer Maven ni PostgreSQL :
 
+- Maven, l'outil qui compile le back, est fourni dans `back/` par le *Maven Wrapper* (commande `./mvnw`) ;
 - PostgreSQL tourne dans un conteneur Docker, une sorte de mini-machine isolée.
 
 ## 3. Installation
@@ -71,3 +75,31 @@ cp .env.example .env
 ```
 
 Ouvre `.env` et remplace `change-me` par un mot de passe de ton choix.
+
+## 4. Lancement
+
+Docker doit être démarré.
+
+### 4.1 Le back et la base de données (port 8080)
+
+Dans un terminal :
+
+```bash
+cd back
+./mvnw spring-boot:run
+```
+
+- Sous Windows, remplace `./mvnw` par `mvnw.cmd`.
+- Le premier lancement télécharge les dépendances : compte quelques minutes.
+- Le back démarre lui-même la base : le module **Spring Boot Docker Compose** lance le conteneur PostgreSQL décrit dans `compose.yaml`, attend qu'il soit prêt et s'y connecte. À l'arrêt du back (Ctrl+C), le conteneur est arrêté ; les données sont conservées.
+- Le back est prêt quand la console affiche `Started ChatPocApplication`.
+
+## 5. Dépannage
+
+| Symptôme | Cause probable | Solution |
+| --- | --- | --- |
+| Le back s'arrête : *Unable to start docker process* ou *Cannot connect to the Docker daemon* | Docker n'est pas démarré | Démarre Docker Desktop ou le service Docker, puis relance le back |
+| Le back s'arrête : *required variable POSTGRES_DB is missing* | Pas de fichier `.env` | `cp .env.example .env` ([section 3.2](#32-créer-le-fichier-env)) |
+| Le back s'arrête : *port is already allocated* | Un autre PostgreSQL utilise déjà le port 5432 | Arrête-le, ou mets `POSTGRES_PORT=5433` dans `.env` |
+| Le back s'arrête : *password authentication failed* | Le mot de passe de `.env` a changé après la création de la base | Recrée la base, ce qui efface ses données : `docker compose down -v` à la racine du dépôt, puis relance le back |
+| `./mvnw` affiche *release version 25 not supported* | Maven utilise un JDK plus ancien | `java -version` doit afficher 25 |
