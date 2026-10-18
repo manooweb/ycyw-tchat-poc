@@ -1,0 +1,18 @@
+# Secrets locaux : seul .env.example est versionné
+.env
+
+# Back (Maven)
+back/target/
+
+# Front (Angular)
+front/node_modules/
+front/dist/
+front/.angular/
+front/coverage/
+
+# IDE et système
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
