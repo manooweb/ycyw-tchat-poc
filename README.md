@@ -15,8 +15,9 @@ Une preuve de concept est un petit programme qui vérifie qu'un choix technique 
 2. [Prérequis](#2-prérequis)
 3. [Installation](#3-installation)
 4. [Lancement](#4-lancement)
-5. [Structure des données](#5-structure-des-données)
-6. [Dépannage](#6-dépannage)
+5. [Fonctionnement](#5-fonctionnement)
+6. [Structure des données](#6-structure-des-données)
+7. [Dépannage](#7-dépannage)
 
 ## 1. Ce que la PoC démontre, et ce qu'elle ne fait pas
 
@@ -96,7 +97,22 @@ cd back
 - La base démarre vide la première fois. Ce sont les **migrations Flyway** qui la remplissent : Flyway est un outil qui exécute, au démarrage du back, les scripts SQL du dossier `back/src/main/resources/db/migration/`, dans l'ordre de leur numéro et une seule fois chacun.
 - Le back est prêt quand la console affiche `Started ChatPocApplication`.
 
-## 5. Structure des données
+## 5. Fonctionnement
+
+### 5.1 Communiquer avec le back en REST
+
+- **REST** : le front envoie une requête HTTP et reçoit une réponse, comme une page web classique. On l'utilise pour ce qui se lit une fois : la liste des utilisateurs, des conversations, et l'historique.
+
+### 5.2 Les adresses utilisées
+
+| Type | Adresse | Rôle |
+| --- | --- | --- |
+| REST | `GET /api/users` | Liste des utilisateurs de démonstration |
+| REST | `GET /api/conversations?userId=1` | Conversations d'un client, ou toutes pour un agent |
+| REST | `POST /api/conversations` | Un client ouvre une conversation |
+| REST | `GET /api/conversations/{id}/messages` | Historique d'une conversation |
+
+## 6. Structure des données
 
 Trois tables, créées par la migration `V1__create_tables.sql`. Les deux utilisateurs de démonstration sont ajoutés par `V2__insert_demo_users.sql`.
 
@@ -128,7 +144,7 @@ docker compose exec postgres psql -U ycyw -d ycyw_chat -c "SELECT * FROM message
 
 Remplace `ycyw` et `ycyw_chat` si tu as changé `POSTGRES_USER` ou `POSTGRES_DB` dans `.env`.
 
-## 6. Dépannage
+## 7. Dépannage
 
 | Symptôme | Cause probable | Solution |
 | --- | --- | --- |
