@@ -1,0 +1,134 @@
+<main class="card">
+  <header class="card-header">
+    <h1>Tchat Your Car Your Way</h1>
+    <!-- Zone de statut : lue par les lecteurs d'écran quand son texte change. -->
+    <output class="connection">
+      @if (chat.connected()) {
+        <span aria-hidden="true">●</span> Connecté au tchat
+      } @else {
+        <span aria-hidden="true">○</span> Connexion au tchat en cours…
+      }
+    </output>
+    @if (user(); as me) {
+      <p class="me">
+        Vous êtes <strong>{{ me.displayName }}</strong>
+        ({{ me.role === 'AGENT' ? 'agent du service client' : 'client' }}).
+        <button type="button" class="link" (click)="changeUser()">Changer d'utilisateur</button>
+      </p>
+    }
+  </header>
+
+  <!-- Annonces (nouvelle conversation, conversation ouverte) : lues sans déplacer le focus. -->
+  <output class="notice" [class.visible]="notice()">{{ notice() }}</output>
+
+  @if (user(); as me) {
+    <div class="layout">
+      <section class="sidebar" aria-labelledby="conversations-title">
+        <h2 id="conversations-title">
+          {{ me.role === 'AGENT' ? 'Conversations des clients' : 'Mes conversations' }}
+        </h2>
+        @if (me.role === 'CLIENT') {
+          <button type="button" (click)="openConversation()">Nouvelle conversation</button>
+        }
+        <ul class="conversations">
+          @for (conversation of conversations.value(); track conversation.id) {
+            <li>
+              <button
+                type="button"
+                (click)="select(conversation)"
+                [attr.aria-current]="conversation.id === selected()?.id ? 'true' : null"
+              >
+                N° {{ conversation.id }}
+                @if (me.role === 'AGENT') {
+                  - {{ conversation.clientName }}
+                }
+                <span class="meta">{{ conversation.createdAt | date: 'dd/MM HH:mm' }}</span>
+              </button>
+            </li>
+          } @empty {
+            <li class="meta">Aucune conversation pour l'instant.</li>
+          }
+        </ul>
+      </section>
+
+      <section class="conversation" aria-labelledby="messages-title">
+        @if (selected(); as conversation) {
+          <h2 id="messages-title">
+            Conversation n° {{ conversation.id }} avec
+            {{ me.role === 'AGENT' ? conversation.clientName : 'le service client' }}
+          </h2>
+
+          <!-- Rôle "log" : journal qui s'allonge au fil de l'eau. Les lecteurs d'écran lisent
+               chaque nouveau message sans couper la lecture en cours ni déplacer le focus. -->
+          <div #messageLog class="messages" role="log" aria-label="Messages de la conversation">
+            <ol>
+              @for (message of messages(); track message.id) {
+                <li [class.mine]="message.authorId === me.id">
+                  <p class="meta">
+                    {{ message.authorId === me.id ? 'Vous' : message.authorName }}
+                    ({{ message.authorRole === 'AGENT' ? 'agent' : 'client' }}), à
+                    <time [attr.datetime]="message.sentAt">{{
+                      message.sentAt | date: 'HH:mm'
+                    }}</time>
+                  </p>
+                  <p class="content">{{ message.content }}</p>
+                </li>
+              } @empty {
+                <li class="meta">Aucun message pour l'instant.</li>
+              }
+            </ol>
+          </div>
+
+          <!-- Validation du navigateur désactivée : l'application affiche les erreurs sous le champ. -->
+          <form class="composer" novalidate (submit)="$event.preventDefault(); send()">
+            <label for="message-input">Votre message</label>
+            <textarea
+              id="message-input"
+              #messageInput
+              rows="2"
+              [formField]="messageForm.content"
+              [attr.aria-invalid]="messageForm.content().touched() && messageForm.content().invalid()"
+              aria-describedby="message-help message-error"
+              (keydown)="onKeydown($event)"
+            ></textarea>
+            <p id="message-help" class="meta">
+              Entrée pour envoyer, Maj+Entrée pour aller à la ligne.
+            </p>
+            <p id="message-error" class="error">
+              @if (messageForm.content().touched()) {
+                @for (error of messageForm.content().errors(); track error.kind) {
+                  {{ error.message }}
+                }
+              }
+            </p>
+            <button type="submit" [disabled]="!chat.connected()">Envoyer</button>
+          </form>
+        } @else {
+          <h2 id="messages-title">Aucune conversation affichée</h2>
+          <p class="meta">
+            {{
+              me.role === 'AGENT'
+                ? 'Choisissez une conversation dans la liste.'
+                : 'Ouvrez une nouvelle conversation ou choisissez-en une dans la liste.'
+            }}
+          </p>
+        }
+      </section>
+    </div>
+  } @else {
+    <section aria-labelledby="who-title">
+      <!-- Le titre peut recevoir le focus par programme, mais pas avec la touche Tab. -->
+      <h2 id="who-title" #whoTitle tabindex="-1">Qui êtes-vous ?</h2>
+      <p class="meta">Choisissez un utilisateur de démonstration.</p>
+      <ul class="users">
+        @for (u of users.value(); track u.id) {
+          <li>
+            <button type="button" (click)="chooseUser(u)">
+              {{ u.displayName }} - {{ u.role === 'AGENT' ? 'agent du service client' : 'client' }}
+            </button>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+</main>
