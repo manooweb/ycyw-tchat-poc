@@ -75,7 +75,7 @@ Tu n'as pas besoin d'installer Maven ni PostgreSQL :
 ### 3.1 Récupérer le code
 
 ```bash
-git clone <url-du-dépôt> ycyw-chat-poc
+git clone https://github.com/manooweb/ycyw-tchat-poc.git ycyw-chat-poc
 cd ycyw-chat-poc
 ```
 
